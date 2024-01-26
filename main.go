@@ -27,7 +27,7 @@ func main() {
 
 func runService(app *fiber.App) {
 	fmt.Println("Init app successfully connectat port : " + getPort())
-	app.Listen(getPort())
+	app.Listen("0.0.0.0" + getPort())
 }
 
 func getPort() string {
