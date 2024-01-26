@@ -8,13 +8,12 @@ import (
 func InitializeRoutes(app *fiber.App) {
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // Adjust this to be more restrictive if needed
-		AllowMethods: "*",
-		AllowHeaders: "*",
+		AllowOrigins: "pdj-frontend.vercel.app, pdj-controller.vercel.app", // Adjust this to be more restrictive if needed
+		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
+		AllowHeaders: "Content-Type, Token, New-Status",
 	}))
 
 	app.Get("/auth/:uuid", CreateToken)
-
 	app.Get("/auth", RecheckStatus)
 
 	app.Get("/menus", GetMenu)
