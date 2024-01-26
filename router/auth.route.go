@@ -69,7 +69,7 @@ func RecheckStatus(c *fiber.Ctx) error {
 		return []byte(os.Getenv("SECRET_KEY")), nil
 	})
 	if err != nil {
-		log.Fatalln("Failedt to parse jwt: ", err)
+		log.Fatalln("Failed to parse jwt: ", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
