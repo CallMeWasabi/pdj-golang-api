@@ -8,9 +8,10 @@ import (
 func InitializeRoutes(app *fiber.App) {
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // Adjust this to be more restrictive if needed
-		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH",
-		AllowHeaders: "Origin, Content-Type, Accept, Token, New-Status",
+		AllowOrigins:     "*", // Adjust this to be more restrictive if needed
+		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH",
+		AllowHeaders:     "*",
+		AllowCredentials: true,
 	}))
 
 	app.Get("/auth/:uuid", CreateToken)

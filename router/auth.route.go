@@ -39,6 +39,7 @@ func CreateToken(c *fiber.Ctx) error {
 	}
 
 	token := jwt.New(jwt.SigningMethodHS256)
+	token.Header["alg"] = "HS256"
 	claims := token.Claims.(jwt.MapClaims)
 	claims["table_id"] = tableData.ID
 	claims["table_name"] = tableData.Name
