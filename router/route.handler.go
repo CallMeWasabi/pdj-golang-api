@@ -32,6 +32,7 @@ func InitializeRoutes(app *fiber.App) {
 	app.Get("/tables/:id", GetTableByID)
 	app.Post("/tables", CreateTable)
 	app.Put("/tables/:id", UpdateTable)
+	app.Delete("/tables/:id", DeleteTable)
 
 	app.Get("/options", GetOption)
 	app.Get("/options/:id", GetOptionByID)

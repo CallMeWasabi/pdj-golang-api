@@ -140,3 +140,44 @@ func UpdateTable(c *fiber.Ctx) error {
 		"success": true,
 	})
 }
+
+func DeleteTable(c *fiber.Ctx) error {
+	ctx := db.Provider.Ctx
+	client := db.Provider.Client
+	id := c.Params("id")
+
+	iter := client.Collection("tables").Where("id", "==", id).Documents(ctx)
+	defer iter.Stop()
+	var tableRefId string
+	var tableData models.Tables
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			log.Fatalln("Failed to iterate over table: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		if err := doc.DataTo(&tableData); err != nil {
+			log.Fatalln("Failed to convert data table: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		tableRefId = doc.Ref.ID
+	}
+
+	if tableData.Status == "IN_SERVICE" {
+		return c.Status(fiber.StatusBadRequest).SendString("Can't delete IN_SERVICE table")
+	}
+
+	_, err := client.Collection("tables").Doc(tableRefId).Delete(ctx)
+	if err != nil {
+		log.Fatalln("Failed to delete table: ", err)
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+	})
+}
