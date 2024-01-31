@@ -153,13 +153,14 @@ func UpdateMenuType(c *fiber.Ctx) error {
 	client := db.Provider.Client
 	id := c.Params("id")
 
-	var newMenuType = models.MenuType{ID: id, UpdatedAt: time.Now()}
+	var newMenuType models.MenuType
 	if err := c.BodyParser(&newMenuType); err != nil {
 		log.Fatalf("Error parse new menu_type : %v", err)
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
+	newMenuType.UpdatedAt = time.Now()
+
 	var refId string
-	var currentMenuType models.MenuType
 	iter := client.Collection("menu_types").Where("id", "==", id).Documents(ctx)
 	for {
 		doc, err := iter.Next()
@@ -170,18 +171,10 @@ func UpdateMenuType(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if err := doc.DataTo(&currentMenuType); err != nil {
-			log.Fatalln("Failed to convert data: ", err)
-			break
-		}
-
 		refId = doc.Ref.ID
 	}
 
-	currentMenuType.Name = newMenuType.Name
-	currentMenuType.Status = newMenuType.Status
-
-	if _, err := client.Collection("menu_types").Doc(refId).Set(ctx, currentMenuType); err != nil {
+	if _, err := client.Collection("menu_types").Doc(refId).Set(ctx, newMenuType); err != nil {
 		log.Fatalln("An error has occurred: ", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}

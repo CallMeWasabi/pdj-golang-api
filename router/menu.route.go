@@ -159,6 +159,24 @@ func CreateMenu(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
+	for i := 0; i < len(newMenu.OptionsId); i++ {
+		optionDocRef, err := client.Collection("options").Doc(newMenu.OptionsId[i]).Get(ctx)
+		if err != nil {
+			log.Fatalln("Failed to get doc option: ", err)
+		}
+
+		var optionData models.Option
+		if err := optionDocRef.DataTo(&optionData); err != nil {
+			log.Fatalln("Failed to convert data option: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		optionData.MenusId = append(optionData.MenusId, docRef.ID)
+		if _, err = client.Collection("options").Doc(optionDocRef.Ref.ID).Set(ctx, optionData); err != nil {
+			log.Fatalln("Failed to update option: ", err)
+		}
+	}
+
 	return c.JSON(fiber.Map{
 		"success": true,
 		"result":  newMenu,
@@ -208,7 +226,7 @@ func DeleteMenu(c *fiber.Ctx) error {
 
 	iter := client.Collection("menus").Where("id", "==", id).Documents(ctx)
 	defer iter.Stop()
-	var refMenuId string
+	var menuRefId string
 	var menuDoc models.Menu
 	for {
 		doc, err := iter.Next()
@@ -223,7 +241,7 @@ func DeleteMenu(c *fiber.Ctx) error {
 			log.Fatalln("Failed to convert data menu: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
-		refMenuId = doc.Ref.ID
+		menuRefId = doc.Ref.ID
 	}
 
 	var menuTypeDoc models.MenuType
@@ -238,7 +256,7 @@ func DeleteMenu(c *fiber.Ctx) error {
 	}
 
 	for i := 0; i < len(menuTypeDoc.MenusId); i++ {
-		if menuTypeDoc.MenusId[i] == refMenuId {
+		if menuTypeDoc.MenusId[i] == menuRefId {
 			removedMenusId := append(menuTypeDoc.MenusId[:i], menuTypeDoc.MenusId[i+1:]...)
 			menuTypeDoc.MenusId = removedMenusId
 			break
@@ -251,9 +269,36 @@ func DeleteMenu(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	_, err = client.Collection("menus").Doc(refMenuId).Delete(ctx)
+	for i := 0; i < len(menuDoc.OptionsId); i++ {
+		var optionDoc models.Option
+		refOption, err := client.Collection("options").Doc(menuDoc.OptionsId[i]).Get(ctx)
+		if err != nil {
+			log.Fatalln("Failed to get document option: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		if err := refOption.DataTo(&optionDoc); err != nil {
+			log.Fatalln("Failed to convert data option: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		for j := 0; j < len(optionDoc.MenusId); j++ {
+			if optionDoc.MenusId[j] == menuRefId {
+				removedOptionsId := append(optionDoc.MenusId[:j], optionDoc.MenusId[j+1:]...)
+				optionDoc.MenusId = removedOptionsId
+				break
+			}
+		}
+
+		_, err = client.Collection("options").Doc(menuDoc.OptionsId[i]).Set(ctx, optionDoc)
+		if err != nil {
+			log.Fatalln("Failed to update options: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+	}
+
+	_, err = client.Collection("menus").Doc(menuRefId).Delete(ctx)
 	if err != nil {
-		log.Fatalln("An error has occurred: ", err)
+		log.Fatalln("Failed to delete menu: ", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 

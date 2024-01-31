@@ -38,6 +38,8 @@ func InitializeRoutes(app *fiber.App) {
 	app.Get("/options/:id", GetOptionByID)
 	app.Get("/options/ref/:id", GetOptionRefID)
 	app.Post("/options", CreateOption)
+	app.Put("/options/:id", UpdateOption)
+	app.Delete("/options/:id", DeleteOption)
 
 	app.Put("/orders/:table_id", UpdateAllOrder)
 	app.Put("/orders/:table_id/:order_uuid", UpdateStatusOneOrder)

@@ -142,3 +142,104 @@ func CreateOption(c *fiber.Ctx) error {
 		"result":  newOption,
 	})
 }
+
+func DeleteOption(c *fiber.Ctx) error {
+	ctx := db.Provider.Ctx
+	client := db.Provider.Client
+	id := c.Params("id")
+
+	iter := client.Collection("options").Where("id", "==", id).Documents(ctx)
+	defer iter.Stop()
+	var optionRefId string
+	var optionDoc models.Option
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			log.Fatalln("Failed to iterate menu: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		if err := doc.DataTo(&optionDoc); err != nil {
+			log.Fatalln("Failed to convert data menu: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		optionRefId = doc.Ref.ID
+	}
+
+	for i := 0; i < len(optionDoc.MenusId); i++ {
+		var menuDoc models.Menu
+		refMenu, err := client.Collection("menus").Doc(optionDoc.MenusId[i]).Get(ctx)
+		if err != nil {
+			log.Fatalln("Failed to get document menu: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		if err := refMenu.DataTo(&menuDoc); err != nil {
+			log.Fatalln("Failed to conver data menu: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		for j := 0; j < len(menuDoc.OptionsId); j++ {
+			if menuDoc.OptionsId[j] == optionRefId {
+				removedMenusId := append(menuDoc.OptionsId[:j], menuDoc.OptionsId[j+1:]...)
+				menuDoc.OptionsId = removedMenusId
+				break
+			}
+		}
+
+		_, err = client.Collection("menus").Doc(optionDoc.MenusId[i]).Set(ctx, menuDoc)
+		if err != nil {
+			log.Fatalln("Failed to update menus: ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+	}
+
+	_, err := client.Collection("options").Doc(optionRefId).Delete(ctx)
+	if err != nil {
+		log.Fatalln("Failed to delete option: ", err)
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+	})
+
+}
+
+func UpdateOption(c *fiber.Ctx) error {
+	ctx := db.Provider.Ctx
+	client := db.Provider.Client
+	id := c.Params("id")
+
+	var optionData models.Option
+	if err := c.BodyParser(&optionData); err != nil {
+		log.Fatalln("Failed to parse new option data: ", err)
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
+	optionData.UpdatedAt = time.Now()
+
+	var optionRefId string
+	iter := client.Collection("options").Where("id", "==", id).Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalln("Failed to iterate over option : ", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		optionRefId = doc.Ref.ID
+	}
+
+	if _, err := client.Collection("options").Doc(optionRefId).Set(ctx, optionData); err != nil {
+		log.Fatalln("An error has occurred: ", err)
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+	})
+}
