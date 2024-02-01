@@ -69,9 +69,9 @@ func GetMenuByID(c *fiber.Ctx) error {
 	includes := c.Get("Includes")
 
 	iter := client.Collection("menus").Where("id", "==", id).Documents(ctx)
-	buffer := models.Menu{}
+	menuData := models.Menu{}
 	for {
-		doc, err := iter.Next()
+		menuDoc, err := iter.Next()
 		if err == iterator.Done {
 			break
 		} else if err != nil {
@@ -79,34 +79,34 @@ func GetMenuByID(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if err := doc.DataTo(&buffer); err != nil {
+		if err := menuDoc.DataTo(&menuData); err != nil {
 			log.Fatalln("Failed to convert menu: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
 		if strings.ToLower(includes) == "true" {
 			var OptionsData []models.Option
-			var OptionData models.Option
-			for i := 0; i < len(buffer.OptionsId); i++ {
-				snapshot, err := client.Collection("options").Doc(buffer.OptionsId[i]).Get(ctx)
+			for i := 0; i < len(menuData.OptionsId); i++ {
+				var OptionData models.Option
+				optionDoc, err := client.Collection("options").Doc(menuData.OptionsId[i]).Get(ctx)
 				if err != nil {
 					log.Fatalln("Failed to get document: ", err)
 					break
 				}
-				if err := snapshot.DataTo(&OptionData); err != nil {
+				if err := optionDoc.DataTo(&OptionData); err != nil {
 					log.Fatalln("Failed to convert data: ", err)
 					break
 				}
 				OptionsData = append(OptionsData, OptionData)
 			}
 
-			buffer.Options = OptionsData
+			menuData.Options = OptionsData
 		}
 
-		if id == buffer.ID {
+		if id == menuData.ID {
 			return c.JSON(fiber.Map{
 				"success": true,
-				"result":  buffer,
+				"result":  menuData,
 			})
 		}
 	}
