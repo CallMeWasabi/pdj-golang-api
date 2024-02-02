@@ -18,63 +18,63 @@ func GetMenuType(c *fiber.Ctx) error {
 	includes := c.Get("Includes")
 
 	iter := client.Collection("menu_types").Documents(ctx)
-	var MenuTypesData []models.MenuType
-	var buffer models.MenuType
+	var menuTypesData []models.MenuType
 	for {
-		doc, err := iter.Next()
+		var menuTypeData models.MenuType
+		menuTypeDoc, err := iter.Next()
 		if err == iterator.Done {
 			break
 		} else if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if err := doc.DataTo(&buffer); err != nil {
+		if err := menuTypeDoc.DataTo(&menuTypeData); err != nil {
 			log.Fatalln("Failed to convert data: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
 		if strings.ToLower(includes) == "true" {
-			var MenusData []models.Menu
-			var MenuData models.Menu
-			for i := 0; i < len(buffer.MenusId); i++ {
-				snapshot, err := client.Collection("menus").Doc(buffer.MenusId[i]).Get(ctx)
+			var menusData []models.Menu
+			for i := 0; i < len(menuTypeData.MenusId); i++ {
+				var menuData models.Menu
+				menuDoc, err := client.Collection("menus").Doc(menuTypeData.MenusId[i]).Get(ctx)
 				if err != nil {
 					log.Fatalln("Failed to get document: ", err)
 					break
 				}
-				if err := snapshot.DataTo(&MenuData); err != nil {
+				if err := menuDoc.DataTo(&menuData); err != nil {
 					log.Fatalln("Failed to convert data: ", err)
 					break
 				}
 
-				var OptionsData []models.Option
-				var OptionData models.Option
-				for i := 0; i < len(MenuData.OptionsId); i++ {
-					snapshot, err := client.Collection("options").Doc(MenuData.OptionsId[i]).Get(ctx)
+				var optionsData []models.Option
+				for i := 0; i < len(menuData.OptionsId); i++ {
+					var optionData models.Option
+					snapshot, err := client.Collection("options").Doc(menuData.OptionsId[i]).Get(ctx)
 					if err != nil {
 						log.Fatalln("Failed to get document: ", err)
 						break
 					}
-					if err := snapshot.DataTo(&OptionData); err != nil {
+					if err := snapshot.DataTo(&optionData); err != nil {
 						log.Fatalln("Failed to convert data: ", err)
 						break
 					}
-					OptionsData = append(OptionsData, OptionData)
+					optionsData = append(optionsData, optionData)
 				}
 
-				MenuData.Options = OptionsData
+				menuData.Options = optionsData
 
-				MenusData = append(MenusData, MenuData)
+				menusData = append(menusData, menuData)
 			}
 
-			buffer.Menus = MenusData
+			menuTypeData.Menus = menusData
 		}
-		MenuTypesData = append(MenuTypesData, buffer)
+		menuTypesData = append(menuTypesData, menuTypeData)
 	}
 
 	return c.JSON(fiber.Map{
 		"success": true,
-		"result":  MenuTypesData,
+		"result":  menuTypesData,
 	})
 }
 
@@ -84,7 +84,7 @@ func GetMenuTypeByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	iter := client.Collection("menu_types").Where("id", "==", id).Documents(ctx)
-	buffer := models.MenuType{}
+	menuTypeData := models.MenuType{}
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -94,32 +94,32 @@ func GetMenuTypeByID(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if err := doc.DataTo(&buffer); err != nil {
+		if err := doc.DataTo(&menuTypeData); err != nil {
 			log.Fatalln("Failed to convert data: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		var MenusData []models.Menu
-		var MenuData models.Menu
-		for i := 0; i < len(buffer.MenusId); i++ {
-			snapshot, err := client.Collection("menus").Doc(buffer.MenusId[i]).Get(ctx)
+		var menusData []models.Menu
+		for i := 0; i < len(menuTypeData.MenusId); i++ {
+			var menuData models.Menu
+			menuDoc, err := client.Collection("menus").Doc(menuTypeData.MenusId[i]).Get(ctx)
 			if err != nil {
 				log.Fatalln("Failed to get document: ", err)
 				break
 			}
-			if err := snapshot.DataTo(&MenuData); err != nil {
+			if err := menuDoc.DataTo(&menuData); err != nil {
 				log.Fatalln("Failed to convert data: ", err)
 				break
 			}
-			MenusData = append(MenusData, MenuData)
+			menusData = append(menusData, menuData)
 		}
 
-		buffer.Menus = MenusData
+		menuTypeData.Menus = menusData
 	}
 
 	return c.JSON(fiber.Map{
 		"success": true,
-		"result":  buffer,
+		"result":  menuTypeData,
 	})
 }
 

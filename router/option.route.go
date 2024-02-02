@@ -20,9 +20,9 @@ func GetOption(c *fiber.Ctx) error {
 
 	iter := client.Collection("options").Documents(ctx)
 	defer iter.Stop()
-	var buffer models.Option
 	for {
-		doc, err := iter.Next()
+		var optionData models.Option
+		optionDoc, err := iter.Next()
 		if err == iterator.Done {
 			break
 		} else if err != nil {
@@ -30,11 +30,11 @@ func GetOption(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if err := doc.DataTo(&buffer); err != nil {
+		if err := optionDoc.DataTo(&optionData); err != nil {
 			log.Fatalln("Failed to convert data option: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
-		optionsData = append(optionsData, buffer)
+		optionsData = append(optionsData, optionData)
 	}
 
 	return c.JSON(fiber.Map{
@@ -169,26 +169,26 @@ func DeleteOption(c *fiber.Ctx) error {
 	}
 
 	for i := 0; i < len(optionDoc.MenusId); i++ {
-		var menuDoc models.Menu
-		refMenu, err := client.Collection("menus").Doc(optionDoc.MenusId[i]).Get(ctx)
+		var menuData models.Menu
+		menuDoc, err := client.Collection("menus").Doc(optionDoc.MenusId[i]).Get(ctx)
 		if err != nil {
 			log.Fatalln("Failed to get document menu: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
-		if err := refMenu.DataTo(&menuDoc); err != nil {
+		if err := menuDoc.DataTo(&menuData); err != nil {
 			log.Fatalln("Failed to conver data menu: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		for j := 0; j < len(menuDoc.OptionsId); j++ {
-			if menuDoc.OptionsId[j] == optionRefId {
-				removedMenusId := append(menuDoc.OptionsId[:j], menuDoc.OptionsId[j+1:]...)
-				menuDoc.OptionsId = removedMenusId
+		for j := 0; j < len(menuData.OptionsId); j++ {
+			if menuData.OptionsId[j] == optionRefId {
+				removedMenusId := append(menuData.OptionsId[:j], menuData.OptionsId[j+1:]...)
+				menuData.OptionsId = removedMenusId
 				break
 			}
 		}
 
-		_, err = client.Collection("menus").Doc(optionDoc.MenusId[i]).Set(ctx, menuDoc)
+		_, err = client.Collection("menus").Doc(optionDoc.MenusId[i]).Set(ctx, menuData)
 		if err != nil {
 			log.Fatalln("Failed to update menus: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)

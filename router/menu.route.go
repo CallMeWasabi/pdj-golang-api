@@ -19,10 +19,10 @@ func GetMenu(c *fiber.Ctx) error {
 
 	iter := client.Collection("menus").Documents(ctx)
 	defer iter.Stop()
-	var MenusData []models.Menu
-	var buffer models.Menu
+	var menusData []models.Menu
 	for {
-		doc, err := iter.Next()
+		var menuData models.Menu
+		menuDoc, err := iter.Next()
 		if err == iterator.Done {
 			break
 		} else if err != nil {
@@ -30,15 +30,15 @@ func GetMenu(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if err := doc.DataTo(&buffer); err != nil {
+		if err := menuDoc.DataTo(&menuData); err != nil {
 			log.Fatalln("Failed to convert menu: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 		if strings.ToLower(includes) == "true" {
 			var OptionsData []models.Option
 			var OptionData models.Option
-			for i := 0; i < len(buffer.OptionsId); i++ {
-				snapshot, err := client.Collection("options").Doc(buffer.OptionsId[i]).Get(ctx)
+			for i := 0; i < len(menuData.OptionsId); i++ {
+				snapshot, err := client.Collection("options").Doc(menuData.OptionsId[i]).Get(ctx)
 				if err != nil {
 					log.Fatalln("Failed to get document: ", err)
 					break
@@ -50,15 +50,15 @@ func GetMenu(c *fiber.Ctx) error {
 				OptionsData = append(OptionsData, OptionData)
 			}
 
-			buffer.Options = OptionsData
+			menuData.Options = OptionsData
 		}
 
-		MenusData = append(MenusData, buffer)
+		menusData = append(menusData, menuData)
 	}
 
 	return c.JSON(fiber.Map{
 		"success": true,
-		"result":  MenusData,
+		"result":  menusData,
 	})
 }
 
@@ -160,19 +160,19 @@ func CreateMenu(c *fiber.Ctx) error {
 	}
 
 	for i := 0; i < len(newMenu.OptionsId); i++ {
-		optionDocRef, err := client.Collection("options").Doc(newMenu.OptionsId[i]).Get(ctx)
+		var optionData models.Option
+		optionDoc, err := client.Collection("options").Doc(newMenu.OptionsId[i]).Get(ctx)
 		if err != nil {
 			log.Fatalln("Failed to get doc option: ", err)
 		}
 
-		var optionData models.Option
-		if err := optionDocRef.DataTo(&optionData); err != nil {
+		if err := optionDoc.DataTo(&optionData); err != nil {
 			log.Fatalln("Failed to convert data option: ", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
 		optionData.MenusId = append(optionData.MenusId, docRef.ID)
-		if _, err = client.Collection("options").Doc(optionDocRef.Ref.ID).Set(ctx, optionData); err != nil {
+		if _, err = client.Collection("options").Doc(optionDoc.Ref.ID).Set(ctx, optionData); err != nil {
 			log.Fatalln("Failed to update option: ", err)
 		}
 	}
